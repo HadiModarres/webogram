@@ -1,5 +1,5 @@
 /*!
- * Webogram v0.7 - messaging web application for MTProto
+ * Webogram v0.7.0 - messaging web application for MTProto
  * https://github.com/zhukov/webogram
  * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
  * https://github.com/zhukov/webogram/blob/master/LICENSE
@@ -802,17 +802,17 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
 
     function wrapParticipants(id, participants) {
       var chat = getChat(id)
+      var myID = AppUsersManager.getSelf().id
       if (isChannel(id)) {
         var isAdmin = chat.pFlags.creator || chat.pFlags.editor || chat.pFlags.moderator
         angular.forEach(participants, function (participant) {
-          participant.canLeave = participant._ == 'channelParticipantSelf'
+          participant.canLeave = myID == participant.user_id
           participant.canKick = isAdmin && participant._ == 'channelParticipant'
 
           // just for order by last seen
           participant.user = AppUsersManager.getUser(participant.user_id)
         })
       } else {
-        var myID = AppUsersManager.getSelf().id
         var isAdmin = chat.pFlags.creator || chat.pFlags.admins_enabled && chat.pFlags.admin
         angular.forEach(participants, function (participant) {
           participant.canLeave = myID == participant.user_id
