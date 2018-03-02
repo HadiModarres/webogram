@@ -66,7 +66,7 @@ angular.module('myApp', [
     // if webogram is opened directly, open the popup by redirecting to the homepage first
     function auth() {
         if (window.top.location.href === document.location.href) {
-            document.location = '/#!auth';
+            document.location = '../../#!auth';
         } else {
             window.top.location = window.top.location.href.split('#')[0] + '#!auth';
         }
