@@ -836,5 +836,8 @@
     "country_select_modal_country_ye": "Iémen",
     "country_select_modal_country_zm": "Zâmbia",
     "country_select_modal_country_tz_uk": "Zanzibar",
-    "country_select_modal_country_zw": "Zimbábue"
+    "country_select_modal_country_zw": "Zimbábue",
+
+    "verify_alert_title": "TODO verify_alert_title",
+    "verify_alert_description": "TODO verify_alert_description"
 }

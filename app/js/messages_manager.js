@@ -1596,6 +1596,7 @@ angular.module('myApp.services')
       } else {
         flags |= 256
       }
+
       message = {
         _: 'message',
         id: messageID,

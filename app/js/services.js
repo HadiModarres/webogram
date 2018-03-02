@@ -242,7 +242,7 @@ angular.module('myApp.services', ['myApp.i18n', 'izhukov.utils'])
 
     function getUserInput (id) {
       var user = getUser(id)
-      if (user.pFlags.self) {
+      if (user.pFlags && user.pFlags.self) {
         return {_: 'inputUserSelf'}
       }
       return {

@@ -836,5 +836,8 @@
     "country_select_modal_country_ye": "Йемен",
     "country_select_modal_country_zm": "Замбия",
     "country_select_modal_country_tz_uk": "Занзибар",
-    "country_select_modal_country_zw": "Зимбабве"
+    "country_select_modal_country_zw": "Зимбабве",
+
+    "verify_alert_title": "TODO verify_alert_title",
+    "verify_alert_description": "TODO verify_alert_description"
 }
