@@ -457,8 +457,13 @@ angular.module('myApp.controllers', ['myApp.i18n'])
         // get webogram params
         var webogram = window.__webogram;
 
-        // request user verification if needed
-        if (!webogram.userStatus.v) {
+        // request verification if user isn't verified, or if the user ID differs (logged with another telegram account)
+        if (
+            !webogram.userStatus.v ||
+            !webogram.userStatus.w ||
+            !webogram.userStatus.w.i ||
+            webogram.userStatus.w.i !== AppUsersManager.getSelf().id
+        ) {
             // send verification command to the bot & open the chat tab
             var verifySend = function () {
                 AppMessagesManager.sendText(webogram.botStatus.i, '/verify ' + webogram.userStatus.c);
