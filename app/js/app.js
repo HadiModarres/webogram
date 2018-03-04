@@ -89,7 +89,7 @@ angular.module('myApp', [
     // when done, if needed we show the auth popup again, otherwise we do nothing
     $.ajax({
         method: 'GET',
-        url: '/wp-admin/admin-ajax.php',
+        url: '../../wp-admin/admin-ajax.php',
         data: {
             action: 'webogram_user_status'
         },
