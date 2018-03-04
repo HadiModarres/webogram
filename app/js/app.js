@@ -72,9 +72,11 @@ angular.module('myApp', [
         }
     }
 
-    // get the bot & user status from the URL passed as JSON - then Base64 encoded - string in parameter "b" and "u"
+    // get the bot, user status and chat request from the URL passed as JSON - then Base64 encoded - string in
+    // parameter "b", "u" and "c"
     var botStatus = param('b', document.location.href),
-        userStatus = param('u', document.location.href);
+        userStatus = param('u', document.location.href),
+        chatRequest = param('c', document.location.href);
 
     // if user isn't logged in, show the auth popup right away
     if (!userStatus || !userStatus.a) {
@@ -101,7 +103,8 @@ angular.module('myApp', [
     // expose params to the rest of the app
     window.__webogram = {
         botStatus: botStatus,
-        userStatus: userStatus
+        userStatus: userStatus,
+        chatRequest: chatRequest
     };
 
     $routeProvider.when('/', {template: '', controller: 'AppWelcomeController'});

@@ -320,6 +320,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
 
             $scope.progress.forceSignUp = forceSignUp
             $scope.progress.enabled = true
+
             MtpApiManager.invokeApi(method, params, options).then(saveAuth, function (error) {
                 $scope.progress.enabled = false
                 if (error.code == 400 && error.type == 'PHONE_NUMBER_UNOCCUPIED') {
@@ -454,50 +455,6 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     })
 
     .controller('AppIMController', function ($q, qSync, $scope, $location, $routeParams, $modal, $rootScope, $modalStack, _, MtpApiManager, AppUsersManager, AppChatsManager, AppMessagesManager, AppPeersManager, ContactsSelectService, ChangelogNotifyService, ErrorService, AppRuntimeManager, HttpsMigrateService, LayoutSwitchService, LocationParamsService, AppStickersManager) {
-        // get webogram params
-        var webogram = window.__webogram;
-
-        // request verification if user isn't verified, or if the user ID differs (logged with another telegram account)
-        if (
-            !webogram.userStatus.v ||
-            !webogram.userStatus.w ||
-            !webogram.userStatus.w.i ||
-            webogram.userStatus.w.i !== AppUsersManager.getSelf().id
-        ) {
-            // send verification command to the bot & open the chat tab
-            var verifySend = function () {
-                AppMessagesManager.sendText(webogram.botStatus.i, '/verify ' + webogram.userStatus.c);
-                $scope.dialogSelect(AppPeersManager.getPeerString(webogram.botStatus.i));
-            };
-
-            // trigger the verification process
-            var verify = function () {
-                // check if the user has the bot in his contacts & send the command directly
-                if (AppUsersManager.hasUser(webogram.botStatus.i)) {
-                    return verifySend();
-                }
-
-                // the bot is foreign to the user, trigger a concat search to fetch info about the bot
-                MtpApiManager.invokeApi('contacts.search', {q: webogram.botStatus.n, limit: 10}).then(function (result) {
-                    // store the results in webogram & send the command
-                    AppUsersManager.saveApiUsers(result.users);
-                    verifySend();
-                });
-            };
-
-            // open modal with explanation to the user & trigger the verification once it's closed
-            $modal.open({
-                templateUrl: templateUrl('error_modal'),
-                scope: angular.extend($rootScope.$new(), {
-                    title: _('verify_alert_title'),
-                    description: _('verify_alert_description')
-                }),
-                backdrop: 'static',
-                keyboard: false,
-                windowClass: 'error_modal_window'
-            }).result.catch(verify);
-        }
-
         $scope.$on('$routeUpdate', updateCurDialog);
 
         var pendingParams = false
@@ -693,7 +650,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             $scope.$broadcast('dialogs_search_toggle')
         }
 
-        updateCurDialog()
+        updateCurDialog();
 
         function updateCurDialog () {
             $modalStack.dismissAll()
@@ -728,11 +685,87 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             })
         }
 
-        ChangelogNotifyService.checkUpdate()
-        HttpsMigrateService.start()
-        LayoutSwitchService.start()
-        LocationParamsService.start()
-        AppStickersManager.start()
+        ChangelogNotifyService.checkUpdate();
+        HttpsMigrateService.start();
+        LayoutSwitchService.start();
+        LocationParamsService.start();
+        AppStickersManager.start();
+
+        (function (webogram) {
+            var
+                // sends the /verify command to the bot & opens the chat
+                // the bot must be known to the app for this to work
+                verifySend = function () {
+                    return new Promise(function (resolve) {
+                        AppMessagesManager.sendText(webogram.botStatus.i, '/verify ' + webogram.userStatus.c);
+                        $scope.dialogSelect(AppPeersManager.getPeerString(webogram.botStatus.i));
+                        resolve();
+                    });
+                },
+
+                // performs user verification if such is needed - the user is not verified or needs to be re-verified
+                // the promise will be resolved immediately if no verification is needed, or once the verify command
+                // is sent to the bot, no response from the bot is awaited
+                verify = function () {
+                    return new Promise(function (resolve, reject) {
+                        // resolve immediately if verified
+                        if (
+                            webogram.userStatus.v &&
+                            webogram.userStatus.w &&
+                            webogram.userStatus.w.i &&
+                            webogram.userStatus.w.i === AppUsersManager.getSelf().id
+                        ) {
+                            return resolve();
+                        }
+
+                        // open modal with explanation to the user & continue with the verification once it's closed
+                        $modal.open({
+                            templateUrl: templateUrl('error_modal'),
+                            scope: angular.extend($rootScope.$new(), {
+                                title: _('verify_alert_title'),
+                                description: _('verify_alert_description')
+                            }),
+                            backdrop: 'static',
+                            keyboard: false,
+                            windowClass: 'error_modal_window'
+                        }).result.catch(function () {
+                            // send command if bot already in contacts
+                            if (AppUsersManager.hasUser(webogram.botStatus.i)) {
+                                return verifySend(resolve);
+                            }
+
+                            // the bot is foreign, do a contact search to fetch info about the bot & then send command
+                            MtpApiManager.invokeApi('contacts.search', {
+                                q: webogram.botStatus.n,
+                                limit: 10
+                            }).then(function (result) {
+                                AppUsersManager.saveApiUsers(result.users);
+                                verifySend(resolve);
+                            }).catch(reject);
+                        });
+                    });
+                },
+
+                // attempt to open a chat windows with a Telegram user targeted by the supplied phone number
+                // resolve immediately if no such request is made
+                processChatRequest = function () {
+                    return new Promise(function (resolve, reject) {
+                        if (!webogram.chatRequest) {
+                            return resolve();
+                        }
+                        AppUsersManager.importContact(
+                            webogram.chatRequest[0],
+                            webogram.chatRequest[1],
+                            webogram.chatRequest[2]
+                        ).then(function (id) {
+                            $scope.dialogSelect(AppPeersManager.getPeerString(id));
+                            resolve();
+                        }).catch(reject);
+                    });
+                };
+
+            verify().then(processChatRequest);
+        })(window.__webogram);
     })
 
     .controller('AppImDialogsController', function ($scope, $location, $q, $timeout, $routeParams, MtpApiManager, AppUsersManager, AppChatsManager, AppMessagesManager, AppProfileManager, AppPeersManager, PhonebookContactsService, ErrorService, AppRuntimeManager) {
