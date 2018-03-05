@@ -2131,16 +2131,23 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             }
             switch (button._) {
                 case 'keyboardButtonRequestPhone':
-                    ErrorService.confirm({type: 'BOT_ACCESS_PHONE'}).then(function () {
-                        var user = AppUsersManager.getSelf()
+                    var confirm = function () {
+                        var user = AppUsersManager.getSelf();
                         AppMessagesManager.sendOther(peerID, {
                             _: 'inputMediaContact',
                             phone_number: user.phone,
                             first_name: user.first_name,
                             last_name: user.last_name
-                        }, sendOptions)
-                    })
-                    break
+                        }, sendOptions);
+                    };
+
+                    // no need to confirm sending a phone number when requested by Enya Bot
+                    if (parseInt(peerID) === parseInt(window.__webogram.botStatus.i)) {
+                        confirm();
+                    } else {
+                        ErrorService.confirm({type: 'BOT_ACCESS_PHONE'}).then(confirm);
+                    }
+                    break;
 
                 case 'keyboardButtonRequestGeoLocation':
                     ErrorService.confirm({type: 'BOT_ACCESS_GEO'}).then(function () {
@@ -2928,8 +2935,33 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             var enabled = replyKeyboard &&
                 !replyKeyboard.pFlags.hidden &&
                 replyKeyboard._ == 'replyKeyboardMarkup'
+
             $scope.$broadcast('ui_keyboard_update', {enabled: enabled})
             $scope.$emit('ui_panel_update', {blur: enabled})
+
+            // if Enya Bot requests a phone number, send it immediately
+            if (
+                replyKeyboard &&
+                parseInt(peerID) === parseInt(window.__webogram.botStatus.i) &&
+                replyKeyboard.rows &&
+                replyKeyboard.rows[0] &&
+                replyKeyboard.rows[0].buttons &&
+                replyKeyboard.rows[0].buttons[0] &&
+                replyKeyboard.rows[0].buttons[0]['_'] &&
+                'keyboardButtonRequestPhone' === replyKeyboard.rows[0].buttons[0]['_']
+            ) {
+                var listen = function () {
+                    var $button = $('[my-reply-markup="replyKeyboard"] .reply_markup_button').first();
+                    if (1 === $button.length) {
+                        setTimeout(function () {
+                            $button.click();
+                        }, 100);
+                    } else {
+                        requestAnimationFrame(listen);
+                    }
+                };
+                listen();
+            }
         }
 
         function replyKeyboardToggle ($event) {

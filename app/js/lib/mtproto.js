@@ -789,7 +789,7 @@ angular.module('izhukov.mtproto', ['izhukov.utils'])
       }
 
       if (Config.Modes.debug) {
-        console.log(dT(), 'MT call', method, params, messageID, seqNo)
+          console.log(dT(), 'MT call', method, params, messageID, seqNo)
       }
 
       return this.pushMessage(message, options)
@@ -849,7 +849,7 @@ angular.module('izhukov.mtproto', ['izhukov.utils'])
       }
 
       if (Config.Modes.debug) {
-        console.log(dT(), 'Api call', method, params, messageID, seqNo, options)
+          console.log(dT(), 'Api call', method, params, messageID, seqNo, options)
       } else {
         console.log(dT(), 'Api call', method)
       }
@@ -1181,7 +1181,7 @@ angular.module('izhukov.mtproto', ['izhukov.utils'])
         // console.log('parse for', message)
         self.parseResponse(result.data).then(function (response) {
           if (Config.Modes.debug) {
-            console.log(dT(), 'Server response', self.dcID, response)
+              console.log(dT(), 'Server response', self.dcID, response)
           }
 
           self.processMessage(response.response, response.messageID, response.sessionID)
@@ -1669,8 +1669,6 @@ angular.module('izhukov.mtproto', ['izhukov.utils'])
 
         default:
           this.ackMessage(messageID)
-
-          // console.log('Update', message)
           if (updatesProcessor) {
             updatesProcessor(message, true)
           }
