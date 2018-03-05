@@ -744,7 +744,12 @@ angular.module('ui.bootstrap.modal', ['ui.bootstrap.transition'])
           },
           length: function () {
             return stack.length;
-          }
+          },
+            each: function (callback) {
+              for (var i = 0; i < stack.length; i++) {
+                  callback(stack[i]);
+              }
+            }
         };
       }
     };
@@ -965,6 +970,8 @@ angular.module('ui.bootstrap.modal', ['ui.bootstrap.transition'])
       };
 
       $modalStack.open = function (modalInstance, modal) {
+          modalInstance.no_dismiss = !!modal.scope.no_dismiss;
+
         openedWindows.add(modalInstance, {
           deferred: modal.deferred,
           modalScope: modal.scope,
@@ -1014,18 +1021,16 @@ angular.module('ui.bootstrap.modal', ['ui.bootstrap.transition'])
 
       $modalStack.dismiss = function (modalInstance, reason) {
         var modalWindow = openedWindows.get(modalInstance);
-        if (modalWindow) {
+        if (modalWindow && !modalInstance.no_dismiss) {
           modalWindow.value.deferred.reject(reason);
           removeModalWindow(modalInstance);
         }
       };
 
       $modalStack.dismissAll = function (reason) {
-        var topModal = this.getTop();
-        while (topModal) {
-          this.dismiss(topModal.key, reason);
-          topModal = this.getTop();
-        }
+          openedWindows.each(function (modal) {
+              this.dismiss(modal.key, reason);
+          }.bind(this));
       };
 
       $modalStack.getTop = function () {

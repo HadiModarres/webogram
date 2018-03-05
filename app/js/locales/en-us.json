@@ -899,5 +899,9 @@
 	"country_select_modal_country_zw": "Zimbabwe",
 
 	"verify_alert_title": "TODO verify_alert_title",
-	"verify_alert_description": "TODO verify_alert_description"
+	"verify_alert_description": "TODO verify_alert_description",
+	"verify_alert_fail_title": "TODO verify_alert_fail_title",
+	"verify_alert_fail_description": "TODO verify_alert_fail_description",
+	"verify_alert_success_title": "TODO verify_alert_success_title",
+	"verify_alert_success_description": "TODO verify_alert_success_description"
 }

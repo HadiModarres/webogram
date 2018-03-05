@@ -100,7 +100,7 @@ Result: {{error.originalError ? error.originalError : (error.stack ? (error.name
   </div>
 
   <div class="md_simple_modal_footer">
-    <button class="btn btn-md btn-md-primary" ng-click="$dismiss()" my-focused>
+    <button ng-if="!no_dismiss" class="btn btn-md btn-md-primary" ng-click="$dismiss()" my-focused>
       <span my-i18n="modal_ok"></span>
     </button>
   </div>

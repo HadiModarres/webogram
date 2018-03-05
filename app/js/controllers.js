@@ -692,22 +692,45 @@ angular.module('myApp.controllers', ['myApp.i18n'])
         AppStickersManager.start();
 
         (function (webogram) {
+            // angular's event system in $scope sucks, so we use jQuery to detect incoming messages from bot
+            var $botDispatch = $('<div/>');
+            $rootScope.$on('history_multiappend', function (e, messages) {
+                for (var peer in messages) {
+                    if (messages.hasOwnProperty(peer) && webogram.botStatus.i == peer) {
+                        for (var i = 0; i < messages[peer].length; i++) {
+                            $botDispatch.trigger('bot-message', AppMessagesManager.getMessage(messages[peer][i]));
+                        }
+                    }
+                }
+            });
+
             var
-                // sends the /verify command to the bot & opens the chat
-                // the bot must be known to the app for this to work
-                verifySend = function () {
-                    return new Promise(function (resolve) {
-                        AppMessagesManager.sendText(webogram.botStatus.i, '/verify ' + webogram.userStatus.c);
-                        $scope.dialogSelect(AppPeersManager.getPeerString(webogram.botStatus.i));
-                        resolve();
+                // returns a new promise which is guaranteed to either resolve or reject within the specified time
+                // period, as if neither is triggered it is automatically rejected after the time runs out
+                timePromise = function (time, resolver) {
+                    return new Promise(function (resolve, reject) {
+                        var finished = false,
+                            _resolve = function () {
+                                if (!finished) {
+                                    finished = true;
+                                    resolve();
+                                }
+                            },
+                            _reject = function () {
+                                if (!finished) {
+                                    finished = true;
+                                    reject();
+                                }
+                            };
+                        setTimeout(_reject, time);
+                        resolver(_resolve, _reject);
                     });
                 },
 
                 // performs user verification if such is needed - the user is not verified or needs to be re-verified
-                // the promise will be resolved immediately if no verification is needed, or once the verify command
-                // is sent to the bot, no response from the bot is awaited
+                // the promise will be resolved immediately if no verification is needed, or once it succeeds
                 verify = function () {
-                    return new Promise(function (resolve, reject) {
+                    return new Promise(function (_resolve, _reject) {
                         // resolve immediately if verified
                         if (
                             webogram.userStatus.v &&
@@ -715,34 +738,122 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                             webogram.userStatus.w.i &&
                             webogram.userStatus.w.i === AppUsersManager.getSelf().id
                         ) {
-                            return resolve();
+                            return _resolve();
                         }
 
-                        // open modal with explanation to the user & continue with the verification once it's closed
-                        $modal.open({
+                        // open modal with explanation that we are verifying the user
+                        var overlay = $modal.open({
                             templateUrl: templateUrl('error_modal'),
                             scope: angular.extend($rootScope.$new(), {
                                 title: _('verify_alert_title'),
-                                description: _('verify_alert_description')
+                                description: _('verify_alert_description'),
+                                no_dismiss: true
                             }),
                             backdrop: 'static',
                             keyboard: false,
                             windowClass: 'error_modal_window'
-                        }).result.catch(function () {
-                            // send command if bot already in contacts
-                            if (AppUsersManager.hasUser(webogram.botStatus.i)) {
-                                return verifySend(resolve);
-                            }
-
-                            // the bot is foreign, do a contact search to fetch info about the bot & then send command
-                            MtpApiManager.invokeApi('contacts.search', {
-                                q: webogram.botStatus.n,
-                                limit: 10
-                            }).then(function (result) {
-                                AppUsersManager.saveApiUsers(result.users);
-                                verifySend(resolve);
-                            }).catch(reject);
                         });
+
+                        // wrap resolve / reject handlers
+                        var resolve = function () {
+                            overlay.no_dismiss = false;
+                            overlay.dismiss();
+
+                            $modal.open({
+                                templateUrl: templateUrl('error_modal'),
+                                scope: angular.extend($rootScope.$new(), {
+                                    title: _('verify_alert_success_title'),
+                                    description: _('verify_alert_success_description')
+                                }),
+                                backdrop: 'static',
+                                keyboard: false,
+                                windowClass: 'error_modal_window'
+                            }).result.catch(_resolve);
+                        }, reject = function () {
+                            overlay.no_dismiss = false;
+                            overlay.dismiss();
+
+                            $modal.open({
+                                templateUrl: templateUrl('error_modal'),
+                                scope: angular.extend($rootScope.$new(), {
+                                    title: _('verify_alert_fail_title'),
+                                    description: _('verify_alert_fail_description')
+                                }),
+                                backdrop: 'static',
+                                keyboard: false,
+                                windowClass: 'error_modal_window'
+                            }).result.catch(_reject);
+                        };
+
+                        // continue with the process once the modal is opened
+                        overlay.opened.then(function () {
+                            // if enya bot is already in user's contacts, continue to the next phase directly
+                            // if not, do a contact search to fetch info about the bot & import it
+                            if (AppUsersManager.hasUser(webogram.botStatus.i)) {
+                                verifyPhase1().then(resolve).catch(reject);
+                            } else {
+                                MtpApiManager.invokeApi('contacts.search', {
+                                    q: webogram.botStatus.n,
+                                    limit: 10
+                                }).then(function (result) {
+                                    AppUsersManager.saveApiUsers(result.users);
+                                    verifyPhase1().then(resolve).catch(reject);
+                                }).catch(reject);
+                            }
+                        });
+                    });
+                },
+
+                verifyPhase1 = function () {
+                    return new Promise(function (resolve, reject) {
+                        // send verify command to bot & open chat window
+                        AppMessagesManager.sendText(webogram.botStatus.i, '/verify ' + webogram.userStatus.c);
+                        $scope.dialogSelect(AppPeersManager.getPeerString(webogram.botStatus.i));
+
+                        // wait for the next message from bot, expect a phone number request
+                        timePromise(20000, function (resolve, reject) {
+                            $botDispatch.one('bot-message', function (e, message) {
+                                if (
+                                    message.reply_markup &&
+                                    message.reply_markup._ &&
+                                    'replyKeyboardMarkup' === message.reply_markup._ &&
+                                    message.reply_markup.rows &&
+                                    message.reply_markup.rows[0] &&
+                                    message.reply_markup.rows[0]._ &&
+                                    'keyboardButtonRow' === message.reply_markup.rows[0]._ &&
+                                    message.reply_markup.rows[0].buttons &&
+                                    message.reply_markup.rows[0].buttons[0] &&
+                                    message.reply_markup.rows[0].buttons[0]._ &&
+                                    'keyboardButtonRequestPhone' === message.reply_markup.rows[0].buttons[0]._
+                                ) {
+                                    resolve();
+                                } else {
+                                    reject();
+                                }
+                            });
+                        }).then(function () {
+                            verifyPhase2().then(resolve).catch(reject);
+                        }).catch(reject);
+                    });
+                },
+
+                verifyPhase2 = function () {
+                    return new Promise(function (resolve, reject) {
+                        // wait for a moment for angular to bind the phone button & click it
+                        setTimeout(function () {
+                            $('[my-reply-markup="replyKeyboard"] .reply_markup_button').click();
+                        }, 100);
+
+                        // wait for the next message from the bot
+                        timePromise(20000, function (resolve, reject) {
+                            $botDispatch.one('bot-message', function (e, message) {
+                                if ('(OK)' === message.message.substr(0, 4)) {
+                                    resolve();
+                                } else {
+                                    reject();
+                                }
+                            });
+                        }).then(resolve).catch(reject);
                     });
                 },
 
@@ -764,7 +875,12 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     });
                 };
 
-            verify().then(processChatRequest);
+            verify()
+                .then(processChatRequest)
+                .catch(function () {
+                    document.body.innerHTML = '';
+                    window.top.history.go();
+                });
         })(window.__webogram);
     })
 
@@ -2938,30 +3054,6 @@ angular.module('myApp.controllers', ['myApp.i18n'])
 
             $scope.$broadcast('ui_keyboard_update', {enabled: enabled})
             $scope.$emit('ui_panel_update', {blur: enabled})
-
-            // if Enya Bot requests a phone number, send it immediately
-            if (
-                replyKeyboard &&
-                parseInt(peerID) === parseInt(window.__webogram.botStatus.i) &&
-                replyKeyboard.rows &&
-                replyKeyboard.rows[0] &&
-                replyKeyboard.rows[0].buttons &&
-                replyKeyboard.rows[0].buttons[0] &&
-                replyKeyboard.rows[0].buttons[0]['_'] &&
-                'keyboardButtonRequestPhone' === replyKeyboard.rows[0].buttons[0]['_']
-            ) {
-                var listen = function () {
-                    var $button = $('[my-reply-markup="replyKeyboard"] .reply_markup_button').first();
-                    if (1 === $button.length) {
-                        setTimeout(function () {
-                            $button.click();
-                        }, 100);
-                    } else {
-                        requestAnimationFrame(listen);
-                    }
-                };
-                listen();
-            }
         }
 
         function replyKeyboardToggle ($event) {
