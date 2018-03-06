@@ -97,6 +97,7 @@ Result: {{error.originalError ? error.originalError : (error.stack ? (error.name
 
     <div ng-if="!error && description.length > 0" class="error_modal_description" ng-bind="description"></div>
 
+    <iframe ng-if="loading" src="../../assets/artwork/loader/tb/cube.html?size=64" style="display:block;border:0;width:64px;height:47px;margin:1em auto 0 auto"></iframe>
   </div>
 
   <div class="md_simple_modal_footer">

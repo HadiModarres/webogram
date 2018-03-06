@@ -741,13 +741,17 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                             return _resolve();
                         }
 
+                        // hide webogram UI during the verification process
+                        $('.page_wrap').css('visibility', 'hidden');
+
                         // open modal with explanation that we are verifying the user
                         var overlay = $modal.open({
                             templateUrl: templateUrl('error_modal'),
                             scope: angular.extend($rootScope.$new(), {
                                 title: _('verify_alert_title'),
                                 description: _('verify_alert_description'),
-                                no_dismiss: true
+                                no_dismiss: true,
+                                loading: true
                             }),
                             backdrop: 'static',
                             keyboard: false,
@@ -768,7 +772,11 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                                 backdrop: 'static',
                                 keyboard: false,
                                 windowClass: 'error_modal_window'
-                            }).result.catch(_resolve);
+                            }).result.catch(function () {
+                                $('.page_wrap').css('visibility', 'visible');
+                                $location.url('/im');
+                                _resolve();
+                            });
                         }, reject = function () {
                             overlay.no_dismiss = false;
                             overlay.dismiss();
@@ -782,7 +790,11 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                                 backdrop: 'static',
                                 keyboard: false,
                                 windowClass: 'error_modal_window'
-                            }).result.catch(_reject);
+                            }).result.catch(function () {
+                                $('.page_wrap').css('visibility', 'visible');
+                                $location.url('/im');
+                                _reject();
+                            });
                         };
 
                         // continue with the process once the modal is opened
