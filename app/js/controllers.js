@@ -727,6 +727,18 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     });
                 },
 
+                // show webogram after verification
+                showUI = function () {
+                    $('.page_wrap').css('visibility', 'visible');
+                    $('.im_page_wrap').show();
+                },
+
+                // hide webogram during verification
+                hideUI = function () {
+                    $('.page_wrap').css('visibility', 'hidden');
+                    $('.im_page_wrap').hide();
+                },
+
                 // performs user verification if such is needed - the user is not verified or needs to be re-verified
                 // the promise will be resolved immediately if no verification is needed, or once it succeeds
                 verify = function () {
@@ -742,7 +754,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                         }
 
                         // hide webogram UI during the verification process
-                        $('.page_wrap').css('visibility', 'hidden');
+                        hideUI();
 
                         // open modal with explanation that we are verifying the user
                         var overlay = $modal.open({
@@ -773,7 +785,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                                 keyboard: false,
                                 windowClass: 'error_modal_window'
                             }).result.catch(function () {
-                                $('.page_wrap').css('visibility', 'visible');
+                                showUI();
                                 $location.url('/im');
                                 _resolve();
                             });
@@ -791,7 +803,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                                 keyboard: false,
                                 windowClass: 'error_modal_window'
                             }).result.catch(function () {
-                                $('.page_wrap').css('visibility', 'visible');
+                                showUI();
                                 $location.url('/im');
                                 _reject();
                             });
